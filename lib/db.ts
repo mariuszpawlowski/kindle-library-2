@@ -36,10 +36,13 @@ export async function getDb(): Promise<DbSchema> {
         }
         const str = await response.Body.transformToString();
         return JSON.parse(str);
-    } catch (error) {
+    } catch (error: any) {
+        // Only return empty DB if the file truly doesn't exist
+        if (error.name === 'NoSuchKey' || error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+            return { books: [], lastSync: new Date().toISOString() };
+        }
         console.error('Error reading DB from S3:', error);
-        // Fallback to empty DB on error to prevent crash, but log it
-        return { books: [], lastSync: new Date().toISOString() };
+        throw error;
     }
 }
 

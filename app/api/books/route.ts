@@ -9,7 +9,8 @@ export async function GET() {
         // Sort by last updated desc
         books.sort((a, b) => new Date(b.lastUpdated).getTime() - new Date(a.lastUpdated).getTime());
         return NextResponse.json(books);
-    } catch (error) {
-        return NextResponse.json({ error: 'Failed to fetch books' }, { status: 500 });
+    } catch (error: any) {
+        console.error('Books API Error:', error);
+        return NextResponse.json({ error: error.message || 'Failed to fetch books' }, { status: 500 });
     }
 }
