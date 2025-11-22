@@ -16,7 +16,9 @@ export default function Home() {
     try {
       const res = await fetch('/api/books');
       if (res.ok) {
-        const data = await res.json();
+        const data: Book[] = await res.json();
+        // Sort by author alphabetically
+        data.sort((a, b) => a.author.localeCompare(b.author));
         setBooks(data);
       }
     } catch (error) {
@@ -38,13 +40,7 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-8">
       <div className="max-w-7xl mx-auto">
-        <header className="flex justify-between items-center mb-12">
-          <div>
-            <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-purple-600">
-              Kindle Library
-            </h1>
-            {/* Removed the paragraph below the title as per instruction */}
-          </div>
+        <header className="flex justify-end items-center mb-12">
           <UploadButton onUploadComplete={fetchBooks} />
         </header>
 
