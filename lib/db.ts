@@ -1,26 +1,60 @@
-import fs from 'fs/promises';
-import path from 'path';
 import { Book, DbSchema } from './types';
+import { s3Client, BUCKET_NAME } from './s3';
+import { GetObjectCommand, PutObjectCommand, HeadObjectCommand, NotFound } from '@aws-sdk/client-s3';
+import { Readable } from 'stream';
 
-const DB_PATH = path.join(process.cwd(), 'data', 'db.json');
+const DB_KEY = 'db.json';
+
+async function streamToString(stream: Readable): Promise<string> {
+    return await new Promise((resolve, reject) => {
+        const chunks: Uint8Array[] = [];
+        stream.on('data', (chunk) => chunks.push(chunk));
+        stream.on('error', reject);
+        stream.on('end', () => resolve(Buffer.concat(chunks).toString('utf-8')));
+    });
+}
 
 async function ensureDb() {
     try {
-        await fs.access(DB_PATH);
-    } catch {
-        const initialData: DbSchema = { books: [], lastSync: new Date().toISOString() };
-        await fs.writeFile(DB_PATH, JSON.stringify(initialData, null, 2));
+        await s3Client.send(new HeadObjectCommand({ Bucket: BUCKET_NAME, Key: DB_KEY }));
+    } catch (error: any) {
+        if (error.name === 'NotFound' || error.$metadata?.httpStatusCode === 404) {
+            const initialData: DbSchema = { books: [], lastSync: new Date().toISOString() };
+            await saveDb(initialData);
+        } else {
+            throw error;
+        }
     }
 }
 
 export async function getDb(): Promise<DbSchema> {
     await ensureDb();
-    const data = await fs.readFile(DB_PATH, 'utf-8');
-    return JSON.parse(data);
+    try {
+        const response = await s3Client.send(new GetObjectCommand({ Bucket: BUCKET_NAME, Key: DB_KEY }));
+        if (!response.Body) {
+            throw new Error('Empty response body from S3');
+        }
+        const str = await response.Body.transformToString();
+        return JSON.parse(str);
+    } catch (error) {
+        console.error('Error reading DB from S3:', error);
+        // Fallback to empty DB on error to prevent crash, but log it
+        return { books: [], lastSync: new Date().toISOString() };
+    }
 }
 
 export async function saveDb(data: DbSchema) {
-    await fs.writeFile(DB_PATH, JSON.stringify(data, null, 2));
+    try {
+        await s3Client.send(new PutObjectCommand({
+            Bucket: BUCKET_NAME,
+            Key: DB_KEY,
+            Body: JSON.stringify(data, null, 2),
+            ContentType: 'application/json'
+        }));
+    } catch (error) {
+        console.error('Error saving DB to S3:', error);
+        throw error;
+    }
 }
 
 export async function getBooks(): Promise<Book[]> {
@@ -63,5 +97,3 @@ export async function updateBookCover(bookId: string, coverUrl: string) {
         await saveDb(db);
     }
 }
-
-// Force rebuild

@@ -3,31 +3,37 @@ import { parseClippings } from '@/lib/parser';
 import { getBooks, saveBooks } from '@/lib/db';
 import { fetchCover } from '@/lib/covers';
 import { Book } from '@/lib/types';
-import fs from 'fs';
-import path from 'path';
+import { s3Client, BUCKET_NAME } from '@/lib/s3';
+import { PutObjectCommand } from '@aws-sdk/client-s3';
 import https from 'https';
 import http from 'http';
 
-const COVERS_DIR = path.join(process.cwd(), 'public', 'covers');
-
-if (!fs.existsSync(COVERS_DIR)) {
-    fs.mkdirSync(COVERS_DIR, { recursive: true });
-}
-
-function downloadImage(url: string, filepath: string): Promise<void> {
+function uploadImageToS3(url: string, key: string): Promise<string> {
     return new Promise((resolve, reject) => {
         const protocol = url.startsWith('https') ? https : http;
         protocol.get(url, (res) => {
             if (res.statusCode === 200) {
-                const fileStream = fs.createWriteStream(filepath);
-                res.pipe(fileStream);
-                fileStream.on('finish', () => {
-                    fileStream.close();
-                    resolve();
+                const chunks: Uint8Array[] = [];
+                res.on('data', (chunk) => chunks.push(chunk));
+                res.on('end', async () => {
+                    const buffer = Buffer.concat(chunks);
+                    try {
+                        await s3Client.send(new PutObjectCommand({
+                            Bucket: BUCKET_NAME,
+                            Key: key,
+                            Body: buffer,
+                            ContentType: 'image/jpeg',
+                            // ACL: 'public-read' // ACLs are often disabled, better to use bucket policy or just rely on public access if configured
+                        }));
+                        const s3Url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+                        resolve(s3Url);
+                    } catch (err) {
+                        reject(err);
+                    }
                 });
             } else if (res.statusCode === 301 || res.statusCode === 302) {
                 if (res.headers.location) {
-                    downloadImage(res.headers.location, filepath).then(resolve).catch(reject);
+                    uploadImageToS3(res.headers.location, key).then(resolve).catch(reject);
                 } else {
                     reject(new Error(`Redirect without location: ${res.statusCode}`));
                 }
@@ -86,12 +92,9 @@ export async function POST(req: NextRequest) {
                     const remoteCoverUrl = await fetchCover(parsedBook.title, parsedBook.author);
                     if (remoteCoverUrl) {
                         const extension = '.jpg';
-                        const filename = `${parsedBook.id}${extension}`;
-                        const localPath = `/covers/${filename}`;
-                        const fullPath = path.join(COVERS_DIR, filename);
+                        const filename = `covers/${parsedBook.id}${extension}`;
 
-                        await downloadImage(remoteCoverUrl, fullPath);
-                        coverUrl = localPath;
+                        coverUrl = await uploadImageToS3(remoteCoverUrl, filename);
                     }
                 } catch (error) {
                     console.error(`Failed to fetch/download cover for ${parsedBook.title}:`, error);
