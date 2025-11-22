@@ -25,7 +25,7 @@ function uploadImageToS3(url: string, key: string): Promise<string> {
                             ContentType: 'image/jpeg',
                             // ACL: 'public-read' // ACLs are often disabled, better to use bucket policy or just rely on public access if configured
                         }));
-                        const s3Url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${key}`;
+                        const s3Url = `https://${BUCKET_NAME}.s3.${process.env.S3_REGION || process.env.AWS_REGION}.amazonaws.com/${key}`;
                         resolve(s3Url);
                     } catch (err) {
                         reject(err);

@@ -38,7 +38,7 @@ async function migrate() {
                         ContentType: 'image/jpeg'
                     }));
 
-                    const s3Url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+                    const s3Url = `https://${BUCKET_NAME}.s3.${process.env.S3_REGION || process.env.AWS_REGION}.amazonaws.com/${filename}`;
                     book.coverUrl = s3Url;
                 } catch (error) {
                     console.error(`Failed to upload ${filename}:`, error);

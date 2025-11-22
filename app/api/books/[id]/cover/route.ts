@@ -34,7 +34,7 @@ export async function POST(
             ContentType: file.type
         }));
 
-        const s3Url = `https://${BUCKET_NAME}.s3.${process.env.AWS_REGION}.amazonaws.com/${filename}`;
+        const s3Url = `https://${BUCKET_NAME}.s3.${process.env.S3_REGION || process.env.AWS_REGION}.amazonaws.com/${filename}`;
 
         await updateBookCover(id, s3Url);
 
