@@ -19,8 +19,14 @@ export default function Home() {
       const res = await fetch('/api/books');
       if (res.ok) {
         const data: Book[] = await res.json();
-        // Sort by author alphabetically
-        data.sort((a, b) => a.author.localeCompare(b.author));
+        // Sort by author surname
+        data.sort((a, b) => {
+          const getSurname = (name: string) => {
+            const parts = name.trim().split(' ');
+            return parts[parts.length - 1].toLowerCase();
+          };
+          return getSurname(a.author).localeCompare(getSurname(b.author));
+        });
         setBooks(data);
       }
     } catch (error) {
