@@ -4,7 +4,7 @@ import { useEffect, useState, useRef } from 'react';
 import { Book } from '@/lib/types';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, Book as BookIcon, Trash2, Upload } from 'lucide-react';
+import { ArrowLeft, Book as BookIcon, Trash2, Upload, Edit2, Check, X } from 'lucide-react';
 import HighlightList from '@/components/HighlightList';
 
 export default function BookPage() {
@@ -14,6 +14,44 @@ export default function BookPage() {
     const [loading, setLoading] = useState(true);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingCover, setUploadingCover] = useState(false);
+
+    // Rename state
+    const [isEditing, setIsEditing] = useState(false);
+    const [editTitle, setEditTitle] = useState('');
+    const [editAuthor, setEditAuthor] = useState('');
+    const [savingRename, setSavingRename] = useState(false);
+
+    useEffect(() => {
+        if (book) {
+            setEditTitle(book.title);
+            setEditAuthor(book.author);
+        }
+    }, [book]);
+
+    const handleRename = async () => {
+        if (!editTitle.trim() || !editAuthor.trim()) return;
+        setSavingRename(true);
+        try {
+            const res = await fetch(`/api/books/${id}/rename`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ newTitle: editTitle, newAuthor: editAuthor }),
+            });
+
+            if (res.ok) {
+                const data = await res.json();
+                setBook(data.book);
+                setIsEditing(false);
+            } else {
+                alert('Failed to rename book');
+            }
+        } catch (error) {
+            console.error('Rename error:', error);
+            alert('Error renaming book');
+        } finally {
+            setSavingRename(false);
+        }
+    };
 
     const fetchBook = async () => {
         try {
@@ -174,8 +212,57 @@ export default function BookPage() {
                     </div>
 
                     <div>
-                        <h1 className="text-3xl font-bold mb-2">{book.title}</h1>
-                        <p className="text-xl text-gray-500 dark:text-gray-400 mb-8">{book.author}</p>
+                        {isEditing ? (
+                            <div className="mb-8 bg-white dark:bg-gray-800 p-4 rounded-lg shadow-sm border border-gray-200 dark:border-gray-700">
+                                <div className="space-y-4">
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Title</label>
+                                        <input
+                                            type="text"
+                                            value={editTitle}
+                                            onChange={(e) => setEditTitle(e.target.value)}
+                                            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-transparent"
+                                        />
+                                    </div>
+                                    <div>
+                                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Author</label>
+                                        <input
+                                            type="text"
+                                            value={editAuthor}
+                                            onChange={(e) => setEditAuthor(e.target.value)}
+                                            className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md bg-transparent"
+                                        />
+                                    </div>
+                                    <div className="flex gap-2 justify-end">
+                                        <button
+                                            onClick={() => setIsEditing(false)}
+                                            className="p-2 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+                                        >
+                                            <X size={20} />
+                                        </button>
+                                        <button
+                                            onClick={handleRename}
+                                            disabled={savingRename}
+                                            className="flex items-center gap-2 px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 disabled:opacity-50"
+                                        >
+                                            {savingRename ? 'Saving...' : <><Check size={18} /> Save</>}
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="group relative mb-8">
+                                <h1 className="text-3xl font-bold mb-2 pr-10">{book.title}</h1>
+                                <p className="text-xl text-gray-500 dark:text-gray-400">{book.author}</p>
+                                <button
+                                    onClick={() => setIsEditing(true)}
+                                    className="absolute top-0 right-0 p-2 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"
+                                    title="Rename Book"
+                                >
+                                    <Edit2 size={20} />
+                                </button>
+                            </div>
+                        )}
 
                         <div className="flex items-center justify-between mb-6">
                             <h2 className="text-xl font-semibold">Highlights ({book.highlights.length})</h2>

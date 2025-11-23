@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { parseClippings } from '@/lib/parser';
 import { getDb, saveDb } from '@/lib/db';
 import { fetchCover } from '@/lib/covers';
-import { Book } from '@/lib/types';
+import { Book, DeletedItem } from '@/lib/types';
 import { s3Client, BUCKET_NAME } from '@/lib/s3';
 import { PutObjectCommand } from '@aws-sdk/client-s3';
 import https from 'https';
@@ -61,12 +61,22 @@ export async function POST(req: NextRequest) {
 
         // 1. Map Existing Books (Title+Author -> Book)
         const existingBooksMap = new Map<string, Book>();
-        db.books.forEach(book => existingBooksMap.set(`${book.title}|${book.author}`, book));
+        db.books.forEach(book => {
+            // Map current name
+            existingBooksMap.set(`${book.title}|${book.author}`, book);
+
+            // Map aliases
+            if (book.aliases) {
+                book.aliases.forEach(alias => {
+                    existingBooksMap.set(`${alias.title}|${alias.author}`, book);
+                });
+            }
+        });
 
         // 2. Map Deleted Books (Title+Author -> true)
         const deletedBooksSet = new Set<string>();
         db.history
-            .filter(item => item.type === 'book')
+            .filter((item): item is DeletedItem => item.type === 'book')
             .forEach(item => {
                 if (item.title && item.author) {
                     deletedBooksSet.add(`${item.title}|${item.author}`);
@@ -76,7 +86,7 @@ export async function POST(req: NextRequest) {
         // 3. Map Deleted Highlights (BookId -> Set<Text>)
         const deletedHighlightsMap = new Map<string, Set<string>>();
         db.history
-            .filter(item => item.type === 'highlight')
+            .filter((item): item is DeletedItem => item.type === 'highlight')
             .forEach(item => {
                 if (item.bookId && item.text) {
                     if (!deletedHighlightsMap.has(item.bookId)) {

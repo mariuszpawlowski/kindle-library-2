@@ -1,4 +1,4 @@
-import { Book, DbSchema, DeletedItem, Highlight } from './types';
+import { Book, DbSchema, DeletedItem, Highlight, RenamedItem } from './types';
 import { s3Client, BUCKET_NAME } from './s3';
 import { GetObjectCommand, PutObjectCommand, HeadObjectCommand, NotFound } from '@aws-sdk/client-s3';
 import { Readable } from 'stream';
@@ -133,7 +133,7 @@ export async function updateBookCover(bookId: string, coverUrl: string) {
     }
 }
 
-export async function getHistory(): Promise<DeletedItem[]> {
+export async function getHistory(): Promise<(DeletedItem | RenamedItem)[]> {
     // Fetch history from DB
     const db = await getDb();
     return db.history || [];

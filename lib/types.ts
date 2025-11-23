@@ -6,6 +6,11 @@ export interface Highlight {
   dateAdded: string;
 }
 
+export interface BookAlias {
+  title: string;
+  author: string;
+}
+
 export interface Book {
   id: string;
   title: string;
@@ -13,6 +18,18 @@ export interface Book {
   coverUrl?: string;
   highlights: Highlight[];
   lastUpdated: string;
+  aliases?: BookAlias[];
+}
+
+export interface RenamedItem {
+  id: string;
+  type: 'rename';
+  bookId: string;
+  oldTitle: string;
+  oldAuthor: string;
+  newTitle: string;
+  newAuthor: string;
+  date: string;
 }
 
 export interface DeletedItem {
@@ -29,6 +46,6 @@ export interface DeletedItem {
 
 export interface DbSchema {
   books: Book[];
-  history: DeletedItem[];
+  history: (DeletedItem | RenamedItem)[];
   lastSync: string;
 }
