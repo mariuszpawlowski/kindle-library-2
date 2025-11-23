@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { parseClippings } from '@/lib/parser';
-import { getBooks, saveBooks } from '@/lib/db';
+import { getDb, saveDb } from '@/lib/db';
 import { fetchCover } from '@/lib/covers';
 import { Book } from '@/lib/types';
 import { s3Client, BUCKET_NAME } from '@/lib/s3';
@@ -57,23 +57,61 @@ export async function POST(req: NextRequest) {
 
         const text = await file.text();
         const parsedBooks = parseClippings(text);
-        const existingBooks = await getBooks();
+        const db = await getDb(); // Fetch full DB for history
 
-        // Create a map of existing books for faster lookup
-        const bookMap = new Map<string, Book>();
-        existingBooks.forEach(book => bookMap.set(book.title + book.author, book));
+        // 1. Map Existing Books (Title+Author -> Book)
+        const existingBooksMap = new Map<string, Book>();
+        db.books.forEach(book => existingBooksMap.set(`${book.title}|${book.author}`, book));
+
+        // 2. Map Deleted Books (Title+Author -> true)
+        const deletedBooksSet = new Set<string>();
+        db.history
+            .filter(item => item.type === 'book')
+            .forEach(item => {
+                if (item.title && item.author) {
+                    deletedBooksSet.add(`${item.title}|${item.author}`);
+                }
+            });
+
+        // 3. Map Deleted Highlights (BookId -> Set<Text>)
+        const deletedHighlightsMap = new Map<string, Set<string>>();
+        db.history
+            .filter(item => item.type === 'highlight')
+            .forEach(item => {
+                if (item.bookId && item.text) {
+                    if (!deletedHighlightsMap.has(item.bookId)) {
+                        deletedHighlightsMap.set(item.bookId, new Set());
+                    }
+                    deletedHighlightsMap.get(item.bookId)!.add(item.text);
+                }
+            });
 
         let newBooksCount = 0;
         let newHighlightsCount = 0;
 
         for (const parsedBook of parsedBooks) {
-            const key = parsedBook.title + parsedBook.author;
-            const existingBook = bookMap.get(key);
+            const key = `${parsedBook.title}|${parsedBook.author}`;
+
+            // SMART IMPORT CHECK 1: Is the book deleted?
+            if (deletedBooksSet.has(key)) {
+                console.log(`Skipping deleted book: ${parsedBook.title}`);
+                continue;
+            }
+
+            const existingBook = existingBooksMap.get(key);
 
             if (existingBook) {
                 // Merge highlights
                 let added = false;
+                const deletedHighlightsForBook = deletedHighlightsMap.get(existingBook.id);
+
                 for (const newHighlight of parsedBook.highlights) {
+                    // SMART IMPORT CHECK 2: Is the highlight deleted?
+                    if (deletedHighlightsForBook && deletedHighlightsForBook.has(newHighlight.text)) {
+                        continue;
+                    }
+
+                    // Check if already exists
                     const exists = existingBook.highlights.some(h => h.text === newHighlight.text);
                     if (!exists) {
                         existingBook.highlights.push(newHighlight);
@@ -105,21 +143,24 @@ export async function POST(req: NextRequest) {
                     coverUrl,
                     lastUpdated: new Date().toISOString(),
                 };
-                bookMap.set(key, newBook);
+
+                // Add to our local map and the main DB array
+                existingBooksMap.set(key, newBook);
+                db.books.push(newBook);
+
                 newBooksCount++;
                 newHighlightsCount += parsedBook.highlights.length;
             }
         }
 
-        const updatedBooks = Array.from(bookMap.values());
-        await saveBooks(updatedBooks);
+        await saveDb(db);
 
         return NextResponse.json({
             message: 'Upload successful',
             stats: {
                 newBooks: newBooksCount,
                 newHighlights: newHighlightsCount,
-                totalBooks: updatedBooks.length
+                totalBooks: db.books.length
             }
         });
 

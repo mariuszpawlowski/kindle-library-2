@@ -6,6 +6,8 @@ import BookCard from '@/components/BookCard';
 import UploadButton from '@/components/UploadButton';
 import { motion } from 'framer-motion';
 import SearchBar from '@/components/SearchBar';
+import { History } from 'lucide-react';
+import Link from 'next/link';
 
 export default function Home() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -40,8 +42,14 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-8">
       <div className="max-w-7xl mx-auto">
-        <header className="flex justify-end items-center mb-12">
-          <UploadButton onUploadComplete={fetchBooks} />
+        <header className="flex justify-end items-center mb-12 gap-4">
+          <Link
+            href="/history"
+            className="flex items-center gap-2 px-4 py-2 text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+          >
+            <History size={20} />
+            <span>History</span>
+          </Link>
         </header>
 
         <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
@@ -74,6 +82,10 @@ export default function Home() {
             )}
           </>
         )}
+      </div>
+
+      <div className="max-w-7xl mx-auto mt-12 flex justify-center pb-12">
+        <UploadButton onUploadComplete={fetchBooks} />
       </div>
     </main>
   );
