@@ -13,11 +13,20 @@ export async function GET(
     return NextResponse.json(book);
 }
 
+import { checkAuth, unauthorizedResponse } from '@/lib/amplify-server';
+
 export async function DELETE(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
-    const { id } = await params;
-    await deleteBook(id);
-    return NextResponse.json({ message: 'Book deleted' });
+    if (!await checkAuth()) return unauthorizedResponse();
+
+    try {
+        const { id } = await params;
+        await deleteBook(id);
+        return NextResponse.json({ message: 'Book deleted' });
+    } catch (error) {
+        console.error('Delete book error:', error);
+        return NextResponse.json({ error: 'Failed to delete book' }, { status: 500 });
+    }
 }

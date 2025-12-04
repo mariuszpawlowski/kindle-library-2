@@ -8,7 +8,7 @@ import { AnimatePresence } from 'framer-motion'; // Keep AnimatePresence if it's
 interface HighlightListProps {
     highlights: Highlight[];
     bookId: string;
-    onDelete: (id: string) => void;
+    onDelete?: (id: string) => void;
 }
 
 export default function HighlightList({ highlights, bookId, onDelete }: HighlightListProps) {
@@ -40,13 +40,15 @@ export default function HighlightList({ highlights, bookId, onDelete }: Highligh
                             >
                                 {copyingId === highlight.id ? <Check size={18} /> : <Copy size={18} />}
                             </button>
-                            <button
-                                onClick={() => onDelete(highlight.id)}
-                                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                                title="Delete highlight"
-                            >
-                                <Trash2 size={18} />
-                            </button>
+                            {onDelete && (
+                                <button
+                                    onClick={() => onDelete(highlight.id)}
+                                    className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                                    title="Delete Highlight"
+                                >
+                                    <Trash2 size={16} />
+                                </button>
+                            )}
                         </div>
                         <p className="text-gray-800 dark:text-gray-200 leading-relaxed mb-4 font-serif text-lg">
                             "{highlight.text}"

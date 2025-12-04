@@ -4,11 +4,14 @@ import { useState, useEffect } from 'react';
 import { DeletedItem, RenamedItem } from '@/lib/types';
 import { ArrowLeft, RotateCcw, BookOpen, Highlighter, Edit2, ArrowRight } from 'lucide-react';
 import Link from 'next/link';
+import { useAuthenticator } from '@aws-amplify/ui-react';
 
 export default function HistoryPage() {
     const [history, setHistory] = useState<(DeletedItem | RenamedItem)[]>([]);
     const [loading, setLoading] = useState(true);
     const [restoring, setRestoring] = useState<string | null>(null);
+    const { authStatus } = useAuthenticator(context => [context.authStatus]);
+    const isAuthenticated = authStatus === 'authenticated';
 
     useEffect(() => {
         fetchHistory();
@@ -124,14 +127,16 @@ export default function HistoryPage() {
                                         )}
                                     </div>
 
-                                    <button
-                                        onClick={() => handleRestore(item.id)}
-                                        disabled={restoring === item.id}
-                                        className="ml-4 p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors disabled:opacity-50"
-                                        title="Restore"
-                                    >
-                                        <RotateCcw size={20} />
-                                    </button>
+                                    {isAuthenticated && (
+                                        <button
+                                            onClick={() => handleRestore(item.id)}
+                                            disabled={restoring === item.id}
+                                            className="ml-4 p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition-colors disabled:opacity-50"
+                                            title="Restore"
+                                        >
+                                            <RotateCcw size={20} />
+                                        </button>
+                                    )}
                                 </div>
                             );
                         })}

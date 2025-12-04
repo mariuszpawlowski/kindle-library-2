@@ -8,7 +8,10 @@ interface UploadButtonProps {
     onUploadComplete: () => void;
 }
 
+import { useAuthenticator } from '@aws-amplify/ui-react';
+
 export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
+    const { authStatus } = useAuthenticator(context => [context.authStatus]);
     const [isUploading, setIsUploading] = useState(false);
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -42,6 +45,8 @@ export default function UploadButton({ onUploadComplete }: UploadButtonProps) {
             }
         }
     };
+
+    if (authStatus !== 'authenticated') return null;
 
     return (
         <div>

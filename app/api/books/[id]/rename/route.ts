@@ -3,10 +3,14 @@ import { getDb, saveDb } from '@/lib/db';
 import { RenamedItem } from '@/lib/types';
 import { v4 as uuidv4 } from 'uuid';
 
+import { checkAuth, unauthorizedResponse } from '@/lib/amplify-server';
+
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    if (!await checkAuth()) return unauthorizedResponse();
+
     try {
         const { id } = await params;
         const { newTitle, newAuthor } = await req.json();

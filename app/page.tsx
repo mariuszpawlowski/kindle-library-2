@@ -8,6 +8,7 @@ import { motion } from 'framer-motion';
 import SearchBar from '@/components/SearchBar';
 import { History } from 'lucide-react';
 import Link from 'next/link';
+import AuthButton from '@/components/AuthButton';
 
 export default function Home() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -56,6 +57,7 @@ export default function Home() {
             <History size={20} />
             <span>History</span>
           </Link>
+          <AuthButton />
         </header>
 
         <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />

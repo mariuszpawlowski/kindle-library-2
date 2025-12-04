@@ -5,10 +5,14 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
 
+import { checkAuth, unauthorizedResponse } from '@/lib/amplify-server';
+
 export async function POST(
     req: NextRequest,
     { params }: { params: Promise<{ id: string }> }
 ) {
+    if (!await checkAuth()) return unauthorizedResponse();
+
     try {
         const { id } = await params;
         const formData = await req.formData();

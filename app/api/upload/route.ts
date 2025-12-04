@@ -46,7 +46,11 @@ function uploadImageToS3(url: string, key: string): Promise<string> {
     });
 }
 
+import { checkAuth, unauthorizedResponse } from '@/lib/amplify-server';
+
 export async function POST(req: NextRequest) {
+    if (!await checkAuth()) return unauthorizedResponse();
+
     try {
         const formData = await req.formData();
         const file = formData.get('file') as File;

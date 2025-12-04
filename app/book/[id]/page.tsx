@@ -6,12 +6,15 @@ import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { ArrowLeft, Book as BookIcon, Trash2, Upload, Edit2, Check, X } from 'lucide-react';
 import HighlightList from '@/components/HighlightList';
+import { useAuthenticator } from '@aws-amplify/ui-react';
 
 export default function BookPage() {
     const { id } = useParams();
     const router = useRouter();
     const [book, setBook] = useState<Book | null>(null);
     const [loading, setLoading] = useState(true);
+    const { authStatus } = useAuthenticator(context => [context.authStatus]);
+    const isAuthenticated = authStatus === 'authenticated';
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [uploadingCover, setUploadingCover] = useState(false);
 
@@ -193,22 +196,24 @@ export default function BookPage() {
                             className="hidden"
                         />
 
-                        <div className="flex flex-col space-y-2 w-full px-4">
-                            <button
-                                onClick={() => fileInputRef.current?.click()}
-                                className="flex items-center justify-center text-blue-500 hover:text-blue-600 transition-colors text-sm py-2 border border-blue-500 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20"
-                            >
-                                <Upload size={16} className="mr-2" />
-                                Change Cover
-                            </button>
-                            <button
-                                onClick={handleDeleteBook}
-                                className="flex items-center justify-center text-red-500 hover:text-red-600 transition-colors text-sm py-2 border border-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
-                            >
-                                <Trash2 size={16} className="mr-2" />
-                                Delete Book
-                            </button>
-                        </div>
+                        {isAuthenticated && (
+                            <div className="flex flex-col space-y-2 w-full px-4">
+                                <button
+                                    onClick={() => fileInputRef.current?.click()}
+                                    className="flex items-center justify-center text-blue-500 hover:text-blue-600 transition-colors text-sm py-2 border border-blue-500 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                >
+                                    <Upload size={16} className="mr-2" />
+                                    Change Cover
+                                </button>
+                                <button
+                                    onClick={handleDeleteBook}
+                                    className="flex items-center justify-center text-red-500 hover:text-red-600 transition-colors text-sm py-2 border border-red-500 rounded-md hover:bg-red-50 dark:hover:bg-red-900/20"
+                                >
+                                    <Trash2 size={16} className="mr-2" />
+                                    Delete Book
+                                </button>
+                            </div>
+                        )}
                     </div>
 
                     <div>
@@ -254,13 +259,15 @@ export default function BookPage() {
                             <div className="group relative mb-8">
                                 <h1 className="text-3xl font-bold mb-2 pr-10">{book.title}</h1>
                                 <p className="text-xl text-gray-500 dark:text-gray-400">{book.author}</p>
-                                <button
-                                    onClick={() => setIsEditing(true)}
-                                    className="absolute top-0 right-0 p-2 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"
-                                    title="Rename Book"
-                                >
-                                    <Edit2 size={20} />
-                                </button>
+                                {isAuthenticated && (
+                                    <button
+                                        onClick={() => setIsEditing(true)}
+                                        className="absolute top-0 right-0 p-2 text-gray-400 hover:text-blue-500 opacity-0 group-hover:opacity-100 transition-all"
+                                        title="Rename Book"
+                                    >
+                                        <Edit2 size={20} />
+                                    </button>
+                                )}
                             </div>
                         )}
 
@@ -271,7 +278,7 @@ export default function BookPage() {
                         <HighlightList
                             highlights={book.highlights}
                             bookId={book.id}
-                            onDelete={handleDeleteHighlight}
+                            onDelete={isAuthenticated ? handleDeleteHighlight : undefined}
                         />
                     </div>
                 </div>
