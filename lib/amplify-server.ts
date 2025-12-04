@@ -16,11 +16,17 @@ export const { runWithAmplifyServerContext } = createServerRunner({
 
 export async function checkAuth() {
     try {
+        // Debug logging
+        console.log('Checking auth...');
+        console.log('Pool ID:', process.env.NEXT_PUBLIC_USER_POOL_ID ? 'Set' : 'Missing');
+        console.log('Client ID:', process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID ? 'Set' : 'Missing');
+
         const session = await runWithAmplifyServerContext({
             nextServerContext: { cookies },
             operation: (contextSpec) => fetchAuthSession(contextSpec)
         });
 
+        console.log('Session tokens present:', session.tokens !== undefined);
         return session.tokens !== undefined;
     } catch (error) {
         console.error('Auth check error:', error);
