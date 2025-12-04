@@ -5,6 +5,9 @@ import { Authenticator } from '@aws-amplify/ui-react';
 import '@aws-amplify/ui-react/styles.css';
 import { ReactNode } from 'react';
 
+import { cognitoUserPoolsTokenProvider } from 'aws-amplify/auth/cognito';
+import { CookieStorage } from 'aws-amplify/utils';
+
 Amplify.configure({
     Auth: {
         Cognito: {
@@ -21,9 +24,11 @@ Amplify.configure({
                 }
             }
         }
-    },
-    ssr: true // Enable server-side rendering (cookie storage)
+    }
 });
+
+// Configure cookie storage for SSR support
+cognitoUserPoolsTokenProvider.setKeyValueStorage(new CookieStorage());
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
     return (
