@@ -21,8 +21,7 @@ Amplify.configure({
                 }
             }
         }
-    }
-},
+    },
     ssr: true // Enable server-side rendering (cookie storage)
 });
 
