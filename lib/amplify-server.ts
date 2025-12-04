@@ -21,6 +21,9 @@ export async function checkAuth() {
         console.log('Pool ID:', process.env.NEXT_PUBLIC_USER_POOL_ID ? 'Set' : 'Missing');
         console.log('Client ID:', process.env.NEXT_PUBLIC_USER_POOL_CLIENT_ID ? 'Set' : 'Missing');
 
+        const cookieStore = await cookies();
+        console.log('Cookies received:', cookieStore.getAll().map(c => c.name));
+
         const session = await runWithAmplifyServerContext({
             nextServerContext: { cookies },
             operation: (contextSpec) => fetchAuthSession(contextSpec)

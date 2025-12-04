@@ -22,6 +22,8 @@ Amplify.configure({
             }
         }
     }
+},
+    ssr: true // Enable server-side rendering (cookie storage)
 });
 
 export default function AuthProvider({ children }: { children: ReactNode }) {
