@@ -8,8 +8,39 @@ import { PutObjectCommand } from '@aws-sdk/client-s3';
 import https from 'https';
 import http from 'http';
 
-function uploadImageToS3(url: string, key: string): Promise<string> {
+// Allowlist of permitted hostname patterns for cover image downloads.
+const COVER_ALLOWED_HOSTNAME_PATTERNS: RegExp[] = [
+    /^[a-z0-9-]+\.amazonaws\.com$/i,
+    /^covers\.openlibrary\.org$/i,
+    /^books\.google\.com$/i,
+    /^[a-z0-9-]+\.googleusercontent\.com$/i,
+    /^[a-z0-9-]+\.bookdepository\.com$/i,
+];
+
+const PRIVATE_IP_PATTERN =
+    /^(127\.|10\.|192\.168\.|172\.(1[6-9]|2[0-9]|3[01])\.|169\.254\.|::1$|fc00:|fe80:)/i;
+
+function isAllowedCoverUrl(raw: string): boolean {
+    let parsed: URL;
+    try {
+        parsed = new URL(raw);
+    } catch {
+        return false;
+    }
+    if (parsed.protocol !== 'https:') return false;
+    const hostname = parsed.hostname;
+    if (PRIVATE_IP_PATTERN.test(hostname)) return false;
+    return COVER_ALLOWED_HOSTNAME_PATTERNS.some((re) => re.test(hostname));
+}
+
+const MAX_REDIRECTS = 3;
+
+function uploadImageToS3(url: string, key: string, redirectCount = 0): Promise<string> {
     return new Promise((resolve, reject) => {
+        if (!isAllowedCoverUrl(url)) {
+            return reject(new Error(`Cover URL not permitted: ${url}`));
+        }
+
         const protocol = url.startsWith('https') ? https : http;
         protocol.get(url, (res) => {
             if (res.statusCode === 200) {
@@ -32,11 +63,14 @@ function uploadImageToS3(url: string, key: string): Promise<string> {
                     }
                 });
             } else if (res.statusCode === 301 || res.statusCode === 302) {
-                if (res.headers.location) {
-                    uploadImageToS3(res.headers.location, key).then(resolve).catch(reject);
-                } else {
-                    reject(new Error(`Redirect without location: ${res.statusCode}`));
+                if (redirectCount >= MAX_REDIRECTS) {
+                    return reject(new Error(`Too many redirects (max ${MAX_REDIRECTS})`));
                 }
+                const location = res.headers.location;
+                if (!location) {
+                    return reject(new Error(`Redirect without location: ${res.statusCode}`));
+                }
+                uploadImageToS3(location, key, redirectCount + 1).then(resolve).catch(reject);
             } else {
                 reject(new Error(`Failed to download: ${res.statusCode}`));
             }
@@ -57,6 +91,11 @@ export async function POST(req: NextRequest) {
 
         if (!file) {
             return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+        }
+
+        const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10 MB
+        if (file.size > MAX_FILE_SIZE) {
+            return NextResponse.json({ error: 'File too large (max 10 MB)' }, { status: 413 });
         }
 
         const text = await file.text();
