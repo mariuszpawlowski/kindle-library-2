@@ -1,7 +1,8 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { Book } from '@/lib/types';
+import { getSurname } from '@/lib/utils';
 import BookCard from '@/components/BookCard';
 import UploadButton from '@/components/UploadButton';
 import { motion } from 'framer-motion';
@@ -14,6 +15,9 @@ export default function Home() {
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortMode, setSortMode] = useState<'author' | 'title'>('author');
+  const [activeLetter, setActiveLetter] = useState<string | null>(null);
+  const [gridReady, setGridReady] = useState(false);
 
   const fetchBooks = async () => {
     try {
@@ -21,13 +25,9 @@ export default function Home() {
       if (res.ok) {
         const data: Book[] = await res.json();
         // Sort by author surname
-        data.sort((a, b) => {
-          const getSurname = (name: string) => {
-            const parts = name.trim().split(' ');
-            return parts[parts.length - 1].toLowerCase();
-          };
-          return getSurname(a.author).localeCompare(getSurname(b.author));
-        });
+        data.sort((a, b) =>
+          getSurname(a.author).localeCompare(getSurname(b.author))
+        );
         setBooks(data);
       }
     } catch (error) {
@@ -41,10 +41,52 @@ export default function Home() {
     fetchBooks();
   }, []);
 
-  const filteredBooks = books.filter(book =>
-    book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    book.author.toLowerCase().includes(searchTerm.toLowerCase())
+  // Per SORT-02: sort by surname (author mode) or title (title mode)
+  const sortedBooks = useMemo(() => {
+    const copy = [...books];
+    if (sortMode === 'author') {
+      copy.sort((a, b) => getSurname(a.author).localeCompare(getSurname(b.author)));
+    } else {
+      copy.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()));
+    }
+    return copy;
+  }, [books, sortMode]);
+
+  // Per NAV-04: filter from sortedBooks so search + bar work together
+  const filteredBooks = useMemo(() =>
+    sortedBooks.filter(book =>
+      book.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      book.author.toLowerCase().includes(searchTerm.toLowerCase())
+    ),
+    [sortedBooks, searchTerm]
   );
+
+  // Per NAV-04: available letters derived from filteredBooks using same key as sortMode
+  const availableLetters = useMemo(() => {
+    const set = new Set<string>();
+    filteredBooks.forEach(book => {
+      const key = sortMode === 'author'
+        ? getSurname(book.author)
+        : book.title.trim().toLowerCase();
+      const initial = key[0]?.toUpperCase();
+      if (initial && /[A-Z]/.test(initial)) set.add(initial);
+    });
+    return set;
+  }, [filteredBooks, sortMode]);
+
+  // Per IMPL-02: guard against Framer Motion 500ms entry animation race
+  const handleLetterClick = (letter: string) => {
+    if (!gridReady) return;
+    setActiveLetter(letter);
+    const target = document.querySelector(`[data-letter="${letter}"]`);
+    target?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
+
+  // Per SORT-03, SORT-04: re-sort grid and reset active letter
+  const handleSortChange = (mode: 'author' | 'title') => {
+    setSortMode(mode);
+    setActiveLetter(null); // SORT-04: reset active letter on sort change
+  };
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-8">
@@ -81,11 +123,35 @@ export default function Home() {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5 }}
+                onAnimationComplete={() => setGridReady(true)}
                 className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-8"
               >
-                {filteredBooks.map((book) => (
-                  <BookCard key={book.id} book={book} />
-                ))}
+                {filteredBooks.map((book, idx) => {
+                  // Determine if this is the first book with this initial in the current sorted/filtered list
+                  const key = sortMode === 'author'
+                    ? getSurname(book.author)
+                    : book.title.trim().toLowerCase();
+                  const initial = key[0]?.toUpperCase();
+                  const isFirstInGroup =
+                    initial !== undefined &&
+                    /[A-Z]/.test(initial) &&
+                    filteredBooks.findIndex(b => {
+                      const bKey = sortMode === 'author'
+                        ? getSurname(b.author)
+                        : b.title.trim().toLowerCase();
+                      return bKey[0]?.toUpperCase() === initial;
+                    }) === idx;
+
+                  return (
+                    <div
+                      key={book.id}
+                      className={isFirstInGroup ? "scroll-mt-16" : undefined}
+                      {...(isFirstInGroup ? { "data-letter": initial } : {})}
+                    >
+                      <BookCard book={book} />
+                    </div>
+                  );
+                })}
               </motion.div>
             )}
           </>
