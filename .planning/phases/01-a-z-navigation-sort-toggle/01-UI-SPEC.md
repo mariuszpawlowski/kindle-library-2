@@ -74,7 +74,7 @@ created: 2026-04-14
 
 ```
 <nav aria-label="Jump to books by letter"
-     class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 py-2 px-0 mb-8">
+     class="sticky top-0 z-10 bg-gray-50 dark:bg-gray-900 border-b border-gray-200 dark:border-gray-700 py-2 px-0 mb-6">
 
   <div class="max-w-7xl mx-auto flex flex-wrap items-center gap-2 sm:gap-3">
 
@@ -137,8 +137,10 @@ Declared values (multiples of 4, inheriting from existing 8-point scale in codeb
 | xs | `gap-1` | 4px | Gap between letter buttons on mobile |
 | sm | `gap-2` / `px-2` / `py-1` | 8px | Letter button padding; gap between buttons desktop; bar internal gaps |
 | md | `gap-3` / `px-3` | 12px | Sort toggle button horizontal padding; gap on sm+ breakpoint |
-| lg | `mb-8` | 32px | Bottom margin below `AlphabetBar` before grid (matches existing SearchBar `mb-8`) |
+| lg | `mb-6` | 24px | Bottom margin below `AlphabetBar` before grid — **decision:** AlphabetBar uses `mb-6` (not `mb-8`) so it does not double-stack with SearchBar's existing `mb-8` above it; combined gap between search input and grid is 24px, not 64px |
 | xl | `py-2` | 8px top+bottom | AlphabetBar bar padding |
+
+> **Authoritative source:** The component spec table below (letter button sizes, padding, gap) is the single source of truth. Prose descriptions elsewhere in this spec (e.g. "approximately N px wide") are illustrative only and should not be used to infer spacing values.
 
 **Touch target minimum:** Letter buttons must hit 32×32px minimum. At `text-xs px-2 py-1` each button is approximately 28×24px — add `min-w-[1.75rem] min-h-[2rem]` to ensure 44px is met on mobile where `text-xs` is used. Use `min-w-[1.75rem]` (28px) on desktop where `text-sm` naturally clears 32px.
 
@@ -229,7 +231,7 @@ interface AlphabetBarProps {
 ### Sort Toggle — Segmented Control
 
 - Shape: two adjacent `<button>` elements inside a `<div>` with `rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden`
-- No gap between buttons — they share the container border; an inner divider `w-px bg-gray-200 dark:border-gray-700` separates the two
+  - No gap between buttons — they share the container border; an inner divider `w-px bg-gray-200 dark:bg-gray-700` separates the two (this is a `<span>`, not a bordered element — use `bg-*` not `border-*`)
 - Width: `shrink-0` — does not stretch; sits left of the letter run
 - Each button: `px-3 py-1 text-xs sm:text-sm transition-colors`
 - Selected state: `bg-blue-500 text-white font-semibold`
@@ -248,7 +250,7 @@ interface AlphabetBarProps {
 ### Mobile Layout (IMPL-04)
 
 - Container: `flex flex-wrap justify-start items-center gap-1 sm:gap-2`
-- On 375px screen: `text-xs` + `px-1.5 py-1` → each button ≈ 26px wide → 26 buttons ≈ 676px natural width → wraps to ~2 rows
+- On 375px screen: `text-xs` + `px-2 py-1` → each button ≈ 28px wide → 26 buttons ≈ 728px natural width → wraps to ~2 rows
 - Two-row wrap is acceptable (iOS Contacts precedent); bar height increases to ~72–80px when wrapped → update `scroll-mt` to `scroll-mt-24` **only if** actual rendered height exceeds 56px in testing
 - **Default contract:** `scroll-mt-16` (64px); adjust to `scroll-mt-20` (80px) if testing reveals two-row wrap on 375px hides cards
 - No horizontal overflow: `overflow-x-hidden` on the `<nav>` container
@@ -439,6 +441,16 @@ const handleLetterClick = (letter: string) => {
 | Third-party | none | not applicable |
 
 No external component registries are used. All new UI is hand-built Tailwind per project constraint.
+
+---
+
+## Out of Scope — This Phase
+
+| Feature | Rationale |
+|---------|-----------|
+| `#` bucket (null / unknown author) | Deferred to v2. SUMMARY.md lists it as "in scope" but no production books with a null or empty author field have been confirmed. Implementing a `#` bucket before verifying real data exists risks dead UI. Action: check whether any `book.author` values are blank/null in production `db.json` before scheduling. |
+| Horizontal scroll fallback for AlphabetBar | Wrap-to-two-rows is the chosen strategy (iOS Contacts precedent). No overflow-scroll variant needed. |
+| Per-letter section headings in grid | Out of scope — letter anchor wrappers use `data-letter` attribute only; no visible heading rendered. |
 
 ---
 
