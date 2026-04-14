@@ -10,6 +10,7 @@ import SearchBar from '@/components/SearchBar';
 import { History } from 'lucide-react';
 import Link from 'next/link';
 import AuthButton from '@/components/AuthButton';
+import AlphabetBar from '@/components/AlphabetBar';
 
 export default function Home() {
   const [books, setBooks] = useState<Book[]>([]);
@@ -102,7 +103,21 @@ export default function Home() {
           <AuthButton />
         </header>
 
-        <SearchBar searchTerm={searchTerm} onSearchChange={setSearchTerm} />
+        <SearchBar
+          searchTerm={searchTerm}
+          onSearchChange={(term) => {
+            setSearchTerm(term);
+            setActiveLetter(null);
+          }}
+        />
+
+        <AlphabetBar
+          letters={availableLetters}
+          activeLetter={activeLetter}
+          sortMode={sortMode}
+          onLetterClick={handleLetterClick}
+          onSortChange={handleSortChange}
+        />
 
         {loading ? (
           <div className="flex justify-center items-center h-64">
