@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useRef } from 'react';
 import { Book } from '@/lib/types';
 import { getSurname } from '@/lib/utils';
 import BookCard from '@/components/BookCard';
@@ -88,6 +88,50 @@ export default function Home() {
     setSortMode(mode);
     setActiveLetter(null); // SORT-04: reset active letter on sort change
   };
+
+  // Scroll-spy: update activeLetter as the user scrolls through letter sections
+  const scrollSpyRef = useRef<IntersectionObserver | null>(null);
+  useEffect(() => {
+    if (!gridReady) return;
+
+    // Disconnect any previous observer before rebuilding
+    scrollSpyRef.current?.disconnect();
+
+    const anchors = Array.from(
+      document.querySelectorAll<HTMLElement>('[data-letter]')
+    );
+    if (anchors.length === 0) return;
+
+    // Track which letters are currently intersecting
+    const visible = new Map<string, boolean>();
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          const letter = (entry.target as HTMLElement).dataset.letter;
+          if (letter) visible.set(letter, entry.isIntersecting);
+        });
+
+        // The topmost intersecting anchor wins
+        const active = anchors.find(
+          (el) => visible.get(el.dataset.letter ?? '') === true
+        );
+        if (active?.dataset.letter) {
+          setActiveLetter(active.dataset.letter);
+        }
+      },
+      {
+        // Top edge: just below the sticky bar (64px); bottom: only top 30% of viewport matters
+        rootMargin: "-64px 0px -70% 0px",
+        threshold: 0,
+      }
+    );
+
+    anchors.forEach((el) => observer.observe(el));
+    scrollSpyRef.current = observer;
+
+    return () => observer.disconnect();
+  }, [gridReady, filteredBooks, sortMode]);
 
   return (
     <main className="min-h-screen bg-gray-50 dark:bg-gray-900 text-gray-900 dark:text-gray-100 p-8">
