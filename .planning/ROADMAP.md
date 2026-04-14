@@ -22,11 +22,11 @@ Add an A–Z jump bar and sort-mode toggle to the existing Next.js book grid so 
 4. The bar and scroll behaviour work correctly on mobile — no horizontal overflow, letters wrap or shrink gracefully on small screens.
 5. The jump bar is keyboard-navigable and screen-reader-friendly: semantic `<nav>`, proper `aria-label`, `disabled` on inactive letters, and `aria-current` on the active letter.
 
-**Plans:** 1/2 plans executed
+**Plans:** 2/2 plans complete
 
 Plans:
 - [x] 01-01-PLAN.md — Shared utilities & state refactor (`lib/utils.ts` + `page.tsx` useMemo chains, gridReady guard, anchor wrappers)
-- [ ] 01-02-PLAN.md — AlphabetBar component & sort toggle UI (sticky bar, 26 letters, dim/disable inactive, aria, mobile wrap, wired into page.tsx)
+- [x] 01-02-PLAN.md — AlphabetBar component & sort toggle UI (sticky bar, 26 letters, dim/disable inactive, aria, mobile wrap, wired into page.tsx)
 
 ---
 
